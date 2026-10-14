@@ -1,0 +1,36 @@
+# Environnement de développement : PostgreSQL 16 + API.
+#   docker compose up -d db      base seule (npm run dev en local)
+#   docker compose up --build    base + API sur http://localhost:3000/api/health
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports: ["5432:5432"]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./backend/db/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d trivalink"]
+      interval: 3s
+      retries: 20
+
+  api:
+    build: ./backend
+    depends_on:
+      db: { condition: service_healthy }
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgres://trivalink_app:trivalink_app_dev@db:5432/trivalink
+      DATABASE_MIGRATION_URL: postgres://trivalink_owner:trivalink_owner_dev@db:5432/trivalink
+      TRIVALINK_MIGRATE_ON_START: "1"
+      TRIVALINK_SEED: "1"
+      TRIVALINK_STORAGE_DIR: /data/evidence
+    ports: ["3000:3000"]
+    volumes:
+      - evidence:/data
+
+volumes:
+  pgdata:
+  evidence:
